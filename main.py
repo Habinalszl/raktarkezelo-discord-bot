@@ -10,7 +10,7 @@ TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
 
 # STEP 1: BOT SETUP
 intents: Intents = Intents.default()
-intents.message_content = True  # NOQA
+intents.message_content = True
 client: Client = Client(intents=intents)
 
 # STEP 2: DATABASE SETUP
@@ -31,15 +31,14 @@ create_database()
 
 # STEP 3: MESSAGE FUNCTIONALITY
 async def send_message(message: Message, user_message: str) -> None:
-    if not user_message:
-        print('(Message was empty because intents were not enabled probably)')
-        return
-
+    user_message = user_message.strip().lower()  # Normalize input
     try:
         response: str = handle_raktar_command(user_message)
         if response:
             await message.channel.send(response)
+            await message.add_reaction("✅")  # Success reaction
     except Exception as e:
+        await message.add_reaction("❌")  # Failure reaction
         print(e)
 
 # STEP 4: HANDLING RAKTAR COMMANDS
@@ -47,26 +46,48 @@ def handle_raktar_command(command: str) -> str:
     conn = sqlite3.connect('raktar.db')
     cursor = conn.cursor()
 
-    if command.startswith("!raktar"):
-        cursor.execute("SELECT * FROM raktar")
+    if command.startswith("!help"):
+        response = (
+            "Elérhető parancsok:\n"
+            "`!raktar` - A raktár tartalmának listázása.\n"
+            "`!raktar [termék]` - Egy adott termék keresése a raktárban.\n"
+            "`!hozzaad [termék] [mennyiség]` - Új termék hozzáadása.\n"
+            "`!modosit [termék] [új mennyiség]` - Termék mennyiségének módosítása.\n"
+            "`!torol [termék]` - Termék törlése a raktárból.\n"
+            "`!help` - Parancsok listájának megjelenítése."
+        )
+        conn.close()
+        return response
+
+    elif command.startswith("!raktar"):
+        parts = command.split(" ", 1)
+        if len(parts) > 1:  # Specific product search
+            nev = parts[1]
+            cursor.execute("SELECT * FROM raktar WHERE nev LIKE ?", (nev,))
+        else:  # List all products
+            cursor.execute("SELECT * FROM raktar")
         rows = cursor.fetchall()
         if rows:
             response = "Raktár tartalma:\n"
             for row in rows:
                 response += f"**{row[1]}** - {row[2]} db\n"
         else:
-            response = "A raktár üres."
+            response = "A raktár üres vagy nincs ilyen termék."
         conn.close()
         return response
 
     elif command.startswith("!hozzaad"):
         try:
             _, nev, mennyiseg = command.split(" ", 2)
+            if not nev.isalnum():
+                return "A termék neve csak betűket és számokat tartalmazhat."
             mennyiseg = int(mennyiseg)
+            if mennyiseg <= 0:
+                return "A mennyiségnek pozitív számnak kell lennie."
             cursor.execute("INSERT INTO raktar (nev, mennyiseg) VALUES (?, ?)", (nev, mennyiseg))
             conn.commit()
             conn.close()
-            return f"**{nev}** hozzáadva a raktárhoz, {mennyiseg} db mennyiséggel."
+            return f"✅ **{nev}** hozzáadva a raktárhoz, {mennyiseg} db mennyiséggel!"
         except ValueError:
             return "Helytelen parancs. Használat: `!hozzaad [termék] [mennyiség]`"
 
@@ -74,6 +95,8 @@ def handle_raktar_command(command: str) -> str:
         try:
             _, nev, uj_mennyiseg = command.split(" ", 2)
             uj_mennyiseg = int(uj_mennyiseg)
+            if uj_mennyiseg < 0:
+                return "A mennyiség nem lehet negatív."
             cursor.execute("UPDATE raktar SET mennyiseg = ? WHERE nev = ?", (uj_mennyiseg, nev))
             if cursor.rowcount == 0:
                 response = f"Nincs ilyen nevű termék a raktárban: {nev}"
@@ -99,7 +122,7 @@ def handle_raktar_command(command: str) -> str:
         except ValueError:
             return "Helytelen parancs. Használat: `!torol [termék]`"
 
-    return "Ismeretlen parancs. Elérhető parancsok: `!raktar`, `!hozzaad`, `!modosit`, `!torol`."
+    return "Ismeretlen parancs. Írd be `!help`, hogy megismerd az elérhető parancsokat."
 
 # STEP 5: HANDLING THE STARTUP FOR OUR BOT
 @client.event
