@@ -34,7 +34,9 @@ async def send_message(message: Message, user_message: str) -> None:
     user_message = user_message.strip().lower()  # Normalize input
     try:
         response: str = handle_raktar_command(user_message)
-        if response:
+        if response == "reset":  # Special handling for !reset
+            await reset_channel(message)
+        elif response:
             await message.channel.send(response)
             await message.add_reaction("✅")  # Success reaction
     except Exception as e:
@@ -54,10 +56,14 @@ def handle_raktar_command(command: str) -> str:
             "`!hozzaad [termék] [mennyiség]` - Új termék hozzáadása.\n"
             "`!modosit [termék] [új mennyiség]` - Termék mennyiségének módosítása.\n"
             "`!torol [termék]` - Termék törlése a raktárból.\n"
+            "`!reset` - A csatorna összes üzenetének törlése, majd a parancsok és a raktár tartalmának kiírása.\n"
             "`!segitseg` - Parancsok listájának megjelenítése."
         )
         conn.close()
         return response
+
+    elif command.startswith("!reset"):
+        return "reset"
 
     elif command.startswith("!raktar"):
         parts = command.split(" ", 1)
@@ -127,6 +133,23 @@ def handle_raktar_command(command: str) -> str:
             return "Helytelen parancs. Használat: `!torol [termék]`"
 
     return "Ismeretlen parancs. Írd be, hogy `!segitseg`, hogy megismerd az elérhető parancsokat."
+
+# Új függvény: Üzenetek törlése és parancsok/raktár kiírása
+async def reset_channel(message: Message) -> None:
+    try:
+        # Töröljük az összes üzenetet az adott csatornából
+        await message.channel.purge()
+
+        # Kiírjuk az összes parancsot
+        help_message = handle_raktar_command("!segitseg")
+        await message.channel.send(help_message)
+
+        # Kiírjuk a raktár tartalmát
+        raktar_message = handle_raktar_command("!raktar")
+        await message.channel.send(raktar_message)
+    except Exception as e:
+        print(f"Hiba történt a reset során: {e}")
+        await message.channel.send("Hiba történt a csatorna visszaállítása közben.")
 
 # STEP 5: HANDLING THE STARTUP FOR OUR BOT
 @client.event
