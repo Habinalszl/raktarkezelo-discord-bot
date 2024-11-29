@@ -63,14 +63,18 @@ def handle_raktar_command(command: str) -> str:
         parts = command.split(" ", 1)
         if len(parts) > 1:  # Specific product search
             nev = parts[1]
-            cursor.execute("SELECT * FROM raktar WHERE nev LIKE ?", (nev,))
+            cursor.execute("SELECT nev, mennyiseg FROM raktar WHERE nev LIKE ?", (nev,))
         else:  # List all products
-            cursor.execute("SELECT * FROM raktar")
+            cursor.execute("SELECT nev, mennyiseg FROM raktar")
         rows = cursor.fetchall()
         if rows:
-            response = "Raktár tartalma:\n"
+            # Create a header for the table
+            response = "```\n"
+            response += f"{'Termék név':<20}{'Mennyiség':<10}\n"
+            response += "-" * 30 + "\n"  # Table border
             for row in rows:
-                response += f"**{row[1]}** - {row[2]} db\n"
+                response += f"{row[0]:<20}{row[1]:<10}\n"
+            response += "```"
         else:
             response = "A raktár üres vagy nincs ilyen termék."
         conn.close()
