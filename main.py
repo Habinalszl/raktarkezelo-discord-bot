@@ -46,7 +46,7 @@ def handle_raktar_command(command: str) -> str:
     conn = sqlite3.connect('raktar.db')
     cursor = conn.cursor()
 
-    if command.startswith("!help"):
+    if command.startswith("!segitseg"):
         response = (
             "Elérhető parancsok:\n"
             "`!raktar` - A raktár tartalmának listázása.\n"
@@ -54,7 +54,7 @@ def handle_raktar_command(command: str) -> str:
             "`!hozzaad [termék] [mennyiség]` - Új termék hozzáadása.\n"
             "`!modosit [termék] [új mennyiség]` - Termék mennyiségének módosítása.\n"
             "`!torol [termék]` - Termék törlése a raktárból.\n"
-            "`!help` - Parancsok listájának megjelenítése."
+            "`!segitseg` - Parancsok listájának megjelenítése."
         )
         conn.close()
         return response
@@ -122,7 +122,7 @@ def handle_raktar_command(command: str) -> str:
         except ValueError:
             return "Helytelen parancs. Használat: `!torol [termék]`"
 
-    return "Ismeretlen parancs. Írd be `!help`, hogy megismerd az elérhető parancsokat."
+    return "Ismeretlen parancs. Írd be, hogy `!segitseg`, hogy megismerd az elérhető parancsokat."
 
 # STEP 5: HANDLING THE STARTUP FOR OUR BOT
 @client.event
